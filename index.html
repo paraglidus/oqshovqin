@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="shortcut icon" href="DVD.png" type="image/x-icon">
+    <title>DVD Video Animation</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body, html {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #000000;
+            font-family: Arial, sans-serif;
+        }
+
+        .screen {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .dvd {
+            position: absolute;
+            top: 0;
+            left: 0;
+            user-select: none;
+            will-change: transform, left, top;
+        }
+
+        .dvd-logo {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            transform: skewX(-12deg);
+        }
+
+        .dvd-text {
+            font-size: 56px;
+            font-weight: 900;
+            font-style: italic;
+            letter-spacing: -1px;
+            line-height: 0.9;
+        }
+
+        .video-badge {
+            margin-top: 2px;
+            padding: 3px 22px;
+            border-radius: 50%;
+            text-align: center;
+        }
+
+        .video-text {
+            font-size: 13px;
+            font-weight: 900;
+            letter-spacing: 4px;
+            color: #000000;
+        }
+    </style>
+</head>
+<body>
+    <div class="screen">
+        <div id="dvd" class="dvd">
+            <div class="dvd-logo">
+                <span id="dvd-text-el" class="dvd-text">DVD</span>
+                <div id="video-badge-el" class="video-badge">
+                    <span class="video-text">VIDEO</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const elDvd = document.getElementById('dvd');
+        const dvdTextEl = document.getElementById('dvd-text-el');
+        const videoBadgeEl = document.getElementById('video-badge-el');
+
+        let posX = 100;
+        let posY = 100;
+        let speedX = 1.8;
+        let speedY = 1.8;
+        let bounceCount = 0;
+
+        const colors = [
+            '#b5e8b5',
+            '#ff79c6',
+            '#bd93f9',
+            '#f1fa8c',
+            '#8be9fd',
+            '#ffb86c',
+            '#ff5555'
+        ];
+
+        let currentColor = colors[0];
+
+        function applyColor(color) {
+            currentColor = color;
+            dvdTextEl.style.color = color;
+            videoBadgeEl.style.backgroundColor = color;
+        }
+
+        applyColor(currentColor);
+
+        function changeColor() {
+            let nextColor;
+            do {
+                nextColor = colors[Math.floor(Math.random() * colors.length)];
+            } while (nextColor === currentColor);
+            applyColor(nextColor);
+        }
+
+        let audioCtx = null;
+
+        function initAudio() {
+            if (audioCtx) return;
+            try {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                if (audioCtx.state === 'suspended') {
+                    audioCtx.resume();
+                }
+
+                const osc = audioCtx.createOscillator();
+                osc.type = 'sine';
+                osc.frequency.value = 1000;
+
+                const gainNode = audioCtx.createGain();
+                gainNode.gain.value = 0.008;
+
+                osc.connect(gainNode);
+                gainNode.connect(audioCtx.destination);
+                osc.start();
+            } catch (e) {
+                console.log(e);
+            }
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            initAudio();
+        });
+
+        ['click', 'keydown', 'touchstart', 'mousemove'].forEach(eventType => {
+            window.addEventListener(eventType, () => {
+                if (audioCtx && audioCtx.state === 'suspended') {
+                    audioCtx.resume();
+                } else {
+                    initAudio();
+                }
+            }, { once: true });
+        });
+
+        function animate() {
+            const screenWidth = window.innerWidth;
+            const screenHeight = window.innerHeight;
+            const dvdWidth = elDvd.offsetWidth;
+            const dvdHeight = elDvd.offsetHeight;
+
+            posX += speedX;
+            posY += speedY;
+
+            let hitWall = false;
+
+            if (posX + dvdWidth >= screenWidth) {
+                speedX = -Math.abs(speedX);
+                posX = screenWidth - dvdWidth;
+                hitWall = true;
+            } else if (posX <= 0) {
+                speedX = Math.abs(speedX);
+                posX = 0;
+                hitWall = true;
+            }
+
+            if (posY + dvdHeight >= screenHeight) {
+                speedY = -Math.abs(speedY);
+                posY = screenHeight - dvdHeight;
+                hitWall = true;
+            } else if (posY <= 0) {
+                speedY = Math.abs(speedY);
+                posY = 0;
+                hitWall = true;
+            }
+
+            if (hitWall) {
+                changeColor();
+                bounceCount++;
+                
+                if (bounceCount % 11 === 0) {
+                    const ratio = (screenHeight - dvdHeight) / (screenWidth - dvdWidth);
+                    if (Math.abs(speedY / speedX) < ratio * 1.1) {
+                        speedY = speedX * ratio * (Math.random() > 0.5 ? 1 : -1);
+                    }
+                }
+            }
+
+            elDvd.style.left = posX + 'px';
+            elDvd.style.top = posY + 'px';
+
+            requestAnimationFrame(animate);
+        }
+
+        animate();
+
+        window.addEventListener('resize', () => {
+            if (posX + elDvd.offsetWidth > window.innerWidth) {
+                posX = window.innerWidth - elDvd.offsetWidth;
+            }
+            if (posY + elDvd.offsetHeight > window.innerHeight) {
+                posY = window.innerHeight - elDvd.offsetHeight;
+            }
+        });
+    </script>
+</body>
+</html>
